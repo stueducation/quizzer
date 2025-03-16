@@ -1087,6 +1087,35 @@ tailwind.config = {
   animation: rewardPulse 1s ease-in-out 2;
   color: #F8B620;
 }
+
+/* Share quiz styles */
+.share-link-container {
+  background: rgba(19, 104, 206, 0.1);
+  border: 1px solid rgba(19, 104, 206, 0.3);
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 16px;
+}
+
+.share-link-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.share-actions {
+  display: flex;
+  justify-content: space-between;
+}
+
+.share-text {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 8px;
+}
 </style>
 </head>
 <body>
@@ -1094,12 +1123,9 @@ tailwind.config = {
 <!-- Initial content will be added here by JavaScript -->
 </div>
 
-<!-- Sound and music control buttons -->
+<!-- Sound control button -->
 <div id="sound-control" class="sound-control">
 <span id="sound-icon" class="text-2xl">🔇</span>
-</div>
-<div id="music-control" class="sound-control" style="bottom: 90px;">
-<span id="music-icon" class="text-2xl">🎵</span>
 </div>
 
 <!-- Countdown overlay -->
@@ -1300,7 +1326,7 @@ const quizHints = {
 ]
 };
 
-// Create quiz topics - just one category for now per request
+// Create quiz topics - adding more categories as requested
 const allQuizzes = {
 // Science Quiz
 "science_astronomy": {
@@ -1339,6 +1365,82 @@ timeLimit: 20
 }
 ]
 },
+
+// Technology Quiz - First New Topic
+"technology_computers": {
+name: "Computer Technology",
+category: "Technology",
+questions: [
+{
+question: "Which programming language is known for its use in web development and has the file extension .js?",
+answers: ["Java", "JavaScript", "Python", "C++"],
+correct: 1,
+timeLimit: 20
+},
+{
+question: "What company created the iPhone?",
+answers: ["Microsoft", "Google", "Apple", "Samsung"],
+correct: 2,
+timeLimit: 15
+},
+{
+question: "What does CPU stand for?",
+answers: ["Central Processing Unit", "Computer Personal Unit", "Central Personal Utility", "Computer Processing Utility"],
+correct: 0,
+timeLimit: 15
+},
+{
+question: "Which technology is used to connect devices wirelessly over short distances?",
+answers: ["Wi-Fi", "Ethernet", "Bluetooth", "NFC"],
+correct: 2,
+timeLimit: 15
+},
+{
+question: "What social media platform was founded by Mark Zuckerberg?",
+answers: ["Twitter", "Facebook", "Instagram", "LinkedIn"],
+correct: 1,
+timeLimit: 15
+}
+]
+},
+
+// Geography Quiz - Second New Topic
+"geography_world": {
+name: "World Geography",
+category: "Geography",
+questions: [
+{
+question: "Which country is known as the Land of the Rising Sun?",
+answers: ["China", "South Korea", "Japan", "Thailand"],
+correct: 2,
+timeLimit: 15
+},
+{
+question: "What is the longest river in the world?",
+answers: ["Amazon", "Nile", "Mississippi", "Yangtze"],
+correct: 1,
+timeLimit: 20
+},
+{
+question: "Which mountain range separates Europe and Asia?",
+answers: ["Alps", "Himalayas", "Andes", "Ural Mountains"],
+correct: 3,
+timeLimit: 20
+},
+{
+question: "What is the largest desert in the world?",
+answers: ["Sahara Desert", "Arabian Desert", "Gobi Desert", "Antarctic Desert"],
+correct: 3,
+timeLimit: 15
+},
+{
+question: "Which country has the most natural lakes?",
+answers: ["United States", "Russia", "Canada", "Finland"],
+correct: 2,
+timeLimit: 15
+}
+]
+}
 };
 
 // Boss data for Boss Fight Mode
@@ -1573,6 +1675,86 @@ let isSoundOn = false;
 let isMusicOn = false;
 let currentMusic = null;
 
+// Check for shared quiz in URL on load
+function checkForSharedQuiz() {
+  // Get URL params
+  const urlParams = new URLSearchParams(window.location.search);
+  const sharedQuizData = urlParams.get('quiz');
+  
+  if (sharedQuizData) {
+    try {
+      // Decode and parse the quiz data
+      const decodedData = decodeURIComponent(sharedQuizData);
+      const quizObject = JSON.parse(decodedData);
+      
+      // Validate quiz data
+      if (quizObject && quizObject.questions && quizObject.name && quizObject.category) {
+        // Set an import ID so we know it's imported
+        quizObject.id = 'imported_' + Date.now();
+        quizObject.isImported = true;
+        
+        // Add to user quizzes
+        userQuizzes.push(quizObject);
+        
+        // Save to storage
+        saveData('userQuizzes', userQuizzes);
+        
+        // Show import notification after a short delay
+        setTimeout(() => {
+          const notification = document.createElement('div');
+          notification.className = 'fixed top-4 right-4 bg-white shadow-lg rounded-lg p-4 z-50 flex items-center gap-3 animate-fade-in-up';
+          notification.innerHTML = `
+            <div class="w-10 h-10 flex items-center justify-center rounded-full bg-blue">
+              <span class="text-xl text-white">📥</span>
+            </div>
+            <div>
+              <div class="font-bold">Quiz Imported!</div>
+              <div>"${quizObject.name}" has been added to your collection</div>
+            </div>
+            <button class="ml-2 text-gray-400 hover:text-gray-600">&times;</button>
+          `;
+          
+          document.body.appendChild(notification);
+          
+          // Close button
+          const closeBtn = notification.querySelector('button');
+          closeBtn.addEventListener('click', () => {
+            notification.remove();
+          });
+          
+          // Auto remove after 5 seconds
+          setTimeout(() => {
+            notification.classList.add('opacity-0');
+            notification.style.transition = 'opacity 0.5s ease';
+            setTimeout(() => notification.remove(), 500);
+          }, 5000);
+        }, 1000);
+        
+        // Remove the query param to avoid re-importing on refresh
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    } catch (error) {
+      console.error('Error importing shared quiz:', error);
+    }
+  }
+}
+
+// Create a shareable link for a quiz
+function createShareableLink(quiz) {
+  // Create a copy of the quiz without the id to keep the link shorter
+  const shareQuiz = { ...quiz };
+  delete shareQuiz.id;
+  delete shareQuiz.isImported;
+  
+  // Stringify and encode the quiz data
+  const quizData = encodeURIComponent(JSON.stringify(shareQuiz));
+  
+  // Create the full URL with the current origin
+  const shareableUrl = `${window.location.origin}${window.location.pathname}?quiz=${quizData}`;
+  
+  return shareableUrl;
+}
+
 // Load data from localStorage or memory storage
 function loadSavedData() {
   try {
@@ -1636,6 +1818,10 @@ function loadSavedData() {
     if (savedAccessories) {
       gameState.unlockedAccessories = JSON.parse(savedAccessories);
     }
+    
+    // Check for shared quiz in URL parameters
+    checkForSharedQuiz();
+    
   } catch (error) {
     console.log('Error loading saved data:', error);
   }
@@ -1907,12 +2093,6 @@ function playMusic(trackId) {
     track.play()
       .catch(e => console.log('Error playing music:', e));
     currentMusic = track;
-    
-    // Add playing animation to music icon
-    const musicIcon = document.getElementById('music-icon');
-    if (musicIcon) {
-      musicIcon.classList.add('music-playing');
-    }
   }
 }
 
@@ -1925,12 +2105,6 @@ function stopMusic() {
   });
   
   currentMusic = null;
-  
-  // Remove playing animation from music icon
-  const musicIcon = document.getElementById('music-icon');
-  if (musicIcon) {
-    musicIcon.classList.remove('music-playing');
-  }
 }
 
 // Launch confetti animation
@@ -2013,29 +2187,20 @@ function createGameModeBackground(mode) {
   }
 }
 
-// Setup sound and music controls
+// Setup sound control
 function setupSoundControl() {
   const soundControl = document.getElementById('sound-control');
   const soundIcon = document.getElementById('sound-icon');
-  const musicControl = document.getElementById('music-control');
-  const musicIcon = document.getElementById('music-icon');
 
-  if (!soundControl || !soundIcon || !musicControl || !musicIcon) return;
+  if (!soundControl || !soundIcon) return;
 
   // Update sound icon
   const updateSoundIcon = () => {
     soundIcon.textContent = isSoundOn ? '🔊' : '🔇';
   };
 
-  // Update music icon
-  const updateMusicIcon = () => {
-    musicIcon.textContent = isMusicOn ? '🎵' : '🎵';
-    musicIcon.classList.toggle('music-playing', isMusicOn && currentMusic);
-  };
-
   // Initial icon states
   updateSoundIcon();
-  updateMusicIcon();
 
   // Initialize audio when clicking anywhere
   document.addEventListener('click', function initAudioOnFirstClick() {
@@ -2058,40 +2223,6 @@ function setupSoundControl() {
       saveData('preferences', { soundOn: isSoundOn, musicOn: isMusicOn });
     } catch (e) {
       console.log("Error saving sound preference:", e);
-    }
-  });
-  
-  // Toggle music on click
-  musicControl.addEventListener('click', () => {
-    isMusicOn = !isMusicOn;
-    playClickSound();
-    
-    if (isMusicOn) {
-      // Start playing music for current section
-      if (gameState.gameMode === 'standard') {
-        playMusic('standard-music');
-      } else if (gameState.gameMode === 'boss_fight') {
-        playMusic('boss-music');
-      } else if (gameState.gameMode === 'sudden_death') {
-        playMusic('sudden-death-music');
-      } else if (gameState.gameMode === 'team_battle') {
-        playMusic('team-battle-music');
-      } else {
-        playMusic('menu-music');
-      }
-    } else {
-      // Stop all music
-      stopMusic();
-    }
-    
-    // Update icon
-    updateMusicIcon();
-    
-    // Save preference
-    try {
-      saveData('preferences', { soundOn: isSoundOn, musicOn: isMusicOn });
-    } catch (e) {
-      console.log("Error saving music preference:", e);
     }
   });
 }
@@ -2900,9 +3031,92 @@ function saveQuiz() {
   // Unlock achievement
   unlockAchievement('creator');
 
-  // Show success message and return to main menu
-  alert('Quiz created successfully!');
-  renderMainMenu();
+  // Show success message with sharing options
+  showQuizCreationSuccessModal(newQuiz);
+}
+
+// Show success modal with sharing options
+function showQuizCreationSuccessModal(quiz) {
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+  
+  // Create the shareable link
+  const shareableLink = createShareableLink(quiz);
+  
+  modal.innerHTML = `
+    <div class="bg-white rounded-lg p-6 max-w-md w-full animate-fade-in-up">
+      <div class="text-center mb-6">
+        <div class="inline-block p-4 rounded-full bg-green-100 mb-4 text-3xl">✅</div>
+        <h2 class="text-2xl font-bold mb-2">Quiz Created!</h2>
+        <p class="text-gray-600">${quiz.name} has been created successfully.</p>
+      </div>
+      
+      <div class="share-link-container">
+        <p class="share-text">Share this quiz with others:</p>
+        <input type="text" class="share-link-input" value="${shareableLink}" readonly>
+        <div class="share-actions">
+          <button id="copy-link-btn" class="px-4 py-2 bg-blue text-white rounded-lg hover:bg-blue/90 transition-colors">
+            <i class="fas fa-copy mr-1"></i> Copy Link
+          </button>
+          <span id="copy-status" class="text-sm text-green-500 hidden">Copied!</span>
+        </div>
+      </div>
+      
+      <div class="mt-6 flex justify-end">
+        <button id="close-modal-btn" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">
+          Close
+        </button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  // Add event listeners
+  const copyBtn = document.getElementById('copy-link-btn');
+  const closeBtn = document.getElementById('close-modal-btn');
+  const copyStatus = document.getElementById('copy-status');
+  const linkInput = modal.querySelector('.share-link-input');
+  
+  if (copyBtn && copyStatus && linkInput) {
+    copyBtn.addEventListener('click', () => {
+      playClickSound();
+      
+      // Select the text
+      linkInput.select();
+      
+      // Copy the text
+      try {
+        // Use clipboard API if available
+        navigator.clipboard.writeText(linkInput.value)
+          .then(() => {
+            // Show success message
+            copyStatus.classList.remove('hidden');
+            setTimeout(() => {
+              copyStatus.classList.add('hidden');
+            }, 2000);
+          })
+          .catch(() => {
+            // Fallback - try execCommand
+            document.execCommand('copy');
+            copyStatus.classList.remove('hidden');
+            setTimeout(() => {
+              copyStatus.classList.add('hidden');
+            }, 2000);
+          });
+      } catch (err) {
+        console.error('Failed to copy link:', err);
+      }
+    });
+  }
+  
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      playClickSound();
+      modal.remove();
+      renderMainMenu();
+    });
+  }
 }
 
 // Format game result for display in recent activity
@@ -2989,7 +3203,7 @@ ${avatar.emoji}
   if (userQuizzes.length > 0) {
     quizOptionsHTML += `<optgroup label="User-Created Quizzes">`;
     quizOptionsHTML += userQuizzes.map(quiz =>
-      `<option value="${quiz.id}">${quiz.name} (${quiz.category})</option>`
+      `<option value="${quiz.id}">${quiz.name} (${quiz.category})${quiz.isImported ? ' (Imported)' : ''}</option>`
     ).join('');
     quizOptionsHTML += `</optgroup>`;
   }
@@ -3336,7 +3550,8 @@ function showAllQuizzes() {
     quizzesByCategory[category].push({
       id: quiz.id,
       name: quiz.name,
-      isUserCreated: true
+      isUserCreated: true,
+      isImported: quiz.isImported
     });
   }
 
@@ -3363,6 +3578,9 @@ function showAllQuizzes() {
     sortedQuizzes.forEach(quiz => {
       const userCreatedLabel = quiz.isUserCreated ?
         `<span class="badge bg-primary/10 text-primary text-xs">User</span>` : '';
+        
+      const importedLabel = quiz.isImported ?
+        `<span class="badge bg-blue/10 text-blue text-xs ml-1">Imported</span>` : '';
 
       // Check if this quiz has a high score
       const highScore = gameState.highScores && gameState.highScores[quiz.id];
@@ -3374,7 +3592,7 @@ function showAllQuizzes() {
       html += `
 <div class="p-2 py-3 border-b border-gray-200 flex justify-between items-center cursor-pointer hover:bg-primary/5 transition-colors browse-quiz" data-quiz-id="${quiz.id}">
 <div>
-<div class="font-medium">${quiz.name} ${userCreatedLabel}</div>
+<div class="font-medium">${quiz.name} ${userCreatedLabel}${importedLabel}</div>
 <div class="flex items-center gap-2">
 ${highScoreLabel}
 </div>
@@ -3448,7 +3666,8 @@ function handleSearch() {
         id: quiz.id,
         name: quiz.name,
         category: quiz.category,
-        isUserCreated: true
+        isUserCreated: true,
+        isImported: quiz.isImported
       });
     }
   }
@@ -3458,11 +3677,14 @@ function handleSearch() {
     const html = results.map(result => {
       const userCreatedLabel = result.isUserCreated ?
         `<span class="badge bg-primary/10 text-primary text-xs">User</span>` : '';
+        
+      const importedLabel = result.isImported ?
+        `<span class="badge bg-blue/10 text-blue text-xs ml-1">Imported</span>` : '';
 
       return `
 <div class="p-2 py-3 border-b border-gray-200 flex justify-between items-center cursor-pointer hover:bg-primary/5 transition-colors search-result" data-quiz-id="${result.id}">
 <div>
-<div class="font-medium">${result.name} ${userCreatedLabel}</div>
+<div class="font-medium">${result.name} ${userCreatedLabel}${importedLabel}</div>
 <div class="flex items-center gap-2">
 <div class="text-xs text-gray-600">${result.category}</div>
 </div>
